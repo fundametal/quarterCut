@@ -1,62 +1,71 @@
-import cv2
 import cv2 as cv
 import numpy as np
 
+
 # globe valuables
 cut_x, cut_y = -1, -1
+fliped = False
 
 # image input
-src = cv.imread("./images/image.jpg", cv2.IMREAD_GRAYSCALE)
-show_image = cv.cvtColor(src, cv2.COLOR_GRAY2BGR)
+src = cv.imread("./images/image.jpg", cv.IMREAD_GRAYSCALE)
+saved_image = cv.imread("./images/image.jpg", cv.IMREAD_GRAYSCALE)
+show_image = cv.cvtColor(saved_image, cv.COLOR_GRAY2BGR)
 
 # window setting
 root_wind = 'Quarter Cut'
 cv.namedWindow(root_wind)
 
 
-def save_image():
+def save_image(*args):
     global src, cut_x, cut_y
     height, width = src.shape[0], src.shape[1]
 
     if cut_x != -1 and cut_y != -1:
-        cropped_img = src[0: cut_y, 0: cut_x]
-        cv2.imwrite('./images/first_quarter.jpg', cropped_img)
-        cropped_img = src[0: cut_y, cut_x: width]
-        cv2.imwrite('./images/second_quarter.jpg', cropped_img)
-        cropped_img = src[cut_y: height, 0: cut_x]
-        cv2.imwrite('./images/third_quarter.jpg', cropped_img)
-        cropped_img = src[cut_y: height, cut_x: width]
-        cv2.imwrite('./images/fourth_quarter.jpg', cropped_img)
+        cropped_img = saved_image[0: cut_y, 0: cut_x]
+        cv.imwrite('./images/first_quarter.jpg', cropped_img)
+        cropped_img = saved_image[0: cut_y, cut_x: width]
+        cv.imwrite('./images/second_quarter.jpg', cropped_img)
+        cropped_img = saved_image[cut_y + 1: height, 0: cut_x]
+        cv.imwrite('./images/third_quarter.jpg', cropped_img)
+        cropped_img = saved_image[cut_y + 1: height, cut_x: width]
+        cv.imwrite('./images/fourth_quarter.jpg', cropped_img)
 
 
-def invert_image():
-    global src
+def flip_image(*args):
+    global fliped, saved_image
+
+    fliped = True
+
+    upper_img = src[0: cut_y, 0: src.shape[1]]
+    upper_img = cv.flip(upper_img, 0)
+    saved_image = np.vstack((upper_img, src[cut_y: src.shape[0], 0: src.shape[1]]))
+    draw(-1, -1)
+
+
+def invert_image(*args):
+    global src, saved_image, show_image
     src = cv.bitwise_not(src)
+    if fliped:
+        flip_image()
+    else:
+        show_image = src
+        draw(-1, -1)
 
 
 # draw interface
 def draw(mouse_x, mouse_y):
-    global src, show_image, cut_x, cut_y
+    global src, show_image, cut_x, cut_y, saved_image
 
-    show_image = cv.copyMakeBorder(src, 25, 0, 0, 0, cv2.BORDER_CONSTANT, 0)
-    show_image = cv.cvtColor(show_image, cv2.COLOR_GRAY2BGR)
+    show_image = cv.cvtColor(saved_image, cv.COLOR_GRAY2BGR)
 
-    # draw save button
-    cv.rectangle(show_image, (src.shape[1]-47, 3), (src.shape[1]-3, 22), (235, 206, 135), -1)
-    cv.putText(show_image, 'Save', (src.shape[1]-45, 20), cv.FONT_HERSHEY_PLAIN, 1, (0, 0, 0))
-    # draw invert button
-    cv.rectangle(show_image, (src.shape[1] - 102, 3), (src.shape[1] - 50, 22), (235, 206, 135), -1)
-    cv.putText(show_image, 'Invert', (src.shape[1] - 100, 20), cv.FONT_HERSHEY_PLAIN, 1, (0, 0, 0))
+    for y in range(0, show_image.shape[0]):
+        show_image[y, mouse_x] = [0, 0, 255]
 
-    if mouse_y > 25:
-        for y in range(25, show_image.shape[0]):
-            show_image[y, mouse_x] = [0, 0, 255]
-
-        for x in range(0, show_image.shape[1]):
-            show_image[mouse_y, x] = [0, 0, 255]
+    for x in range(0, show_image.shape[1]):
+        show_image[mouse_y, x] = [0, 0, 255]
 
     if cut_x != -1 and cut_y != -1:
-        for y in range(25, show_image.shape[0]):
+        for y in range(0, show_image.shape[0]):
             show_image[y, cut_x] = [0, 255, 0]
 
         for x in range(0, show_image.shape[1]):
@@ -65,17 +74,9 @@ def draw(mouse_x, mouse_y):
 
 # call back
 def mouse_input(event, mouse_x, mouse_y, flags, param):
-    global cut_x, cut_y, show_image
+    global cut_x, cut_y
 
-    if event is cv.EVENT_LBUTTONDOWN and 3 <= mouse_y <= 22:
-        # save button pressed
-        if src.shape[1] - 47 <= mouse_x <= src.shape[1] - 3:
-            save_image()
-        #
-        elif src.shape[1] - 102 <= mouse_x <= src.shape[1] - 50:
-            invert_image()
-
-    if event is cv.EVENT_LBUTTONDBLCLK and mouse_y > 25:
+    if event is cv.EVENT_LBUTTONDBLCLK:
         cut_x, cut_y = mouse_x, mouse_y
 
     draw(mouse_x, mouse_y)
@@ -83,6 +84,9 @@ def mouse_input(event, mouse_x, mouse_y, flags, param):
 
 # set callback
 cv.setMouseCallback(root_wind, mouse_input)
+cv.createButton('invert image', invert_image)
+cv.createButton('flip image', flip_image)
+cv.createButton('save image', save_image)
 
 # create window
 draw(-1, -1)
