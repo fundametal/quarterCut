@@ -34,21 +34,26 @@ def save_image(*args):
 def flip_image(*args):
     global fliped, saved_image
 
-    fliped = True
+    fliped = not fliped
 
-    upper_img = src[0: cut_y, 0: src.shape[1]]
-    upper_img = cv.flip(upper_img, 0)
-    saved_image = np.vstack((upper_img, src[cut_y: src.shape[0], 0: src.shape[1]]))
+    if fliped:
+        upper_img = src[0: cut_y, 0: src.shape[1]]
+        upper_img = cv.flip(upper_img, 0)
+        saved_image = np.vstack((upper_img, src[cut_y: src.shape[0], 0: src.shape[1]]))
+    else:
+        saved_image = src
+
     draw(-1, -1)
 
 
 def invert_image(*args):
-    global src, saved_image, show_image
+    global fliped, src, saved_image, show_image
     src = cv.bitwise_not(src)
     if fliped:
+        fliped = not fliped
         flip_image()
     else:
-        show_image = src
+        saved_image = src
         draw(-1, -1)
 
 
@@ -74,10 +79,13 @@ def draw(mouse_x, mouse_y):
 
 # call back
 def mouse_input(event, mouse_x, mouse_y, flags, param):
-    global cut_x, cut_y
+    global cut_x, cut_y, fliped
 
     if event is cv.EVENT_LBUTTONDBLCLK:
         cut_x, cut_y = mouse_x, mouse_y
+        if fliped:
+            fliped = not fliped
+            flip_image()
 
     draw(mouse_x, mouse_y)
 
